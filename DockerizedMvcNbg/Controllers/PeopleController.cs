@@ -6,22 +6,53 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using DockerizedMvcNbg.Models;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using System.Text;
+using System.Text.Json;
 
-namespace DockerizedMvcNbg.Controllers
-{
+namespace DockerizedMvcNbg.Controllers;
+ 
     public class PeopleController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IDistributedCache _cache;
+        private readonly ILogger<PeopleController> _logger;
 
-        public PeopleController(ApplicationDbContext context)
+        public PeopleController(ApplicationDbContext context, IDistributedCache cache,
+            ILogger<PeopleController> logger)
         {
             _context = context;
+            _cache = cache;
+            _logger = logger;
         }
 
         // GET: People
         public async Task<IActionResult> Index()
         {
-            return View(await _context.Persons.ToListAsync());
+        List<Person>? persons = null;
+        var cachedData = await _cache.GetAsync($"person-all");
+        if (cachedData != null)
+        {
+            var json = Encoding.UTF8.GetString(cachedData);
+            persons = JsonSerializer.Deserialize<List<Person>>(json);
+            _logger.LogInformation($"cache was used by index method");
+        }
+        if (persons == null)
+        {
+            persons = await _context.Persons.Take(50).ToListAsync();
+            _logger.LogInformation($"db was used");
+            var jsonData = JsonSerializer.Serialize(persons);
+            var encodedData = Encoding.UTF8.GetBytes(jsonData);
+            await _cache.SetAsync($"person-all", encodedData);
+        }
+
+     
+
+
+
+
+        return View(persons);
         }
 
         // GET: People/Details/5
@@ -32,9 +63,25 @@ namespace DockerizedMvcNbg.Controllers
                 return NotFound();
             }
 
-            var person = await _context.Persons
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (person == null)
+        ///////////////
+            Person? person=null;
+            var cachedData = await _cache.GetAsync($"person-{id}");
+        if (cachedData != null)
+        {
+            var json = Encoding.UTF8.GetString(cachedData);
+            person = JsonSerializer.Deserialize<Person>(json);
+            _logger.LogInformation($"cache was used");
+        }
+        if (person==null)
+        {
+             person = await _context.Persons .FirstOrDefaultAsync(m => m.Id == id);
+            _logger.LogInformation($"db was used");
+            var jsonData = JsonSerializer.Serialize(person);
+            var encodedData = Encoding.UTF8.GetBytes(jsonData);
+            await _cache.SetAsync($"person-{id}", encodedData);
+        }
+
+        if (person == null)
             {
                 return NotFound();
             }
@@ -59,6 +106,7 @@ namespace DockerizedMvcNbg.Controllers
             {
                 _context.Add(person);
                 await _context.SaveChangesAsync();
+                await _cache.RemoveAsync($"person-all");
                 return RedirectToAction(nameof(Index));
             }
             return View(person);
@@ -98,7 +146,19 @@ namespace DockerizedMvcNbg.Controllers
                 {
                     _context.Update(person);
                     await _context.SaveChangesAsync();
-                }
+                //     await _cache.RemoveAsync($"products-{id}");
+              await _cache.RemoveAsync($"person-all");
+                var jsonData = JsonSerializer.Serialize(person);
+                var encodedData = Encoding.UTF8.GetBytes(jsonData);
+                await _cache.SetAsync($"person-{id}", encodedData);
+
+
+              
+
+
+
+
+            }
                 catch (DbUpdateConcurrencyException)
                 {
                     if (!PersonExists(person.Id))
@@ -145,7 +205,11 @@ namespace DockerizedMvcNbg.Controllers
             }
 
             await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            await _cache.RemoveAsync($"person-all");
+            await _cache.RemoveAsync($"person-{id}");
+
+
+        return RedirectToAction(nameof(Index));
         }
 
         private bool PersonExists(int id)
@@ -153,4 +217,4 @@ namespace DockerizedMvcNbg.Controllers
             return _context.Persons.Any(e => e.Id == id);
         }
     }
-}
+ 

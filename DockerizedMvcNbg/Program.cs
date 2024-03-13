@@ -19,9 +19,9 @@ var app = builder.Build();
 
 app.ApplyMigrations();
 
- 
 
-//using (var dbContext = new ApplicationDbContext( conf ))
+
+//using (var dbContext = new ApplicationDbContext( ))
 //{
 //    dbContext.Database.Migrate();
 //}
