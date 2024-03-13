@@ -8,8 +8,8 @@ services:
       context: .
       dockerfile: DockerizedMvcNbg/Dockerfile
     ports:
-      - 8080:8080
-      - 8081:8081 
+      - "8080:8080"
+      - "8081:8081"
 
   person.database:
     image: postgres:alpine
@@ -17,7 +17,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./.containers/products-db:/var/lib/postgresqldata
+      - ./.containers/products-db:/var/lib/postgresql/data
     environment:
       -  POSTGRES_DB=persons
       -  POSTGRES_USER=postgres
