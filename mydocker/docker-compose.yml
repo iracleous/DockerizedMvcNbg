@@ -1,0 +1,49 @@
+version: '3.4'
+
+services:
+
+  person.database:
+    image: postgres:alpine
+    container_name: person.database
+    ports:
+      - "6432:5432"
+    volumes:
+      - ./.containers/products-db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=persons
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    healthcheck :
+      test: [ "CMD", "pg_isready", "-q", "-d", "persons", "-U", "postgres" ]
+      interval : 5s
+      timeout : 5s
+      retries : 5
+
+  person.cache:
+    image: redis:7.2.4-alpine
+    container_name: person.cache
+    restart: always
+    command: ["redis-server", "--appendonly", "no", "--maxmemory", "500mb", "--maxmemory-policy", "allkeys-lru"]
+ 
+    ports:
+      - '6379:6379'
+
+  dockerizedmvcnbg:
+    image: iracleous/dockerizedmvcnbg:0.0.1
+    container_name: person.mvc
+    depends_on:
+      person.database:
+        condition: service_healthy    
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    volumes:
+      - c:/dimitris/cert:/https        
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=https://+:8081;http://+:8080
+      - ASPNETCORE_Kestrel__Certificates__Default__Password=MyPassword
+      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/cert.pfx
+      - ASPNETCORE_ConnectionStrings_Database="Host=person.database;Port=6432;Database=persons;Username=postgres;Password=postgres;Include Error Detail=true" 
+
+

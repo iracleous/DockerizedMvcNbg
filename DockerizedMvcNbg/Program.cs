@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 
- 
+
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 builder.Services.AddDbContext<ApplicationDbContext>(
@@ -17,16 +17,16 @@ builder.Services.AddStackExchangeRedisCache(
 
 var app = builder.Build();
 
-app.ApplyMigrations();
+ app.ApplyMigrations();
 
-
-
-//using (var dbContext = new ApplicationDbContext( ))
+// ###equivalent
+//var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
+//optionsBuilder.UseNpgsql(builder.Configuration.GetConnectionString("Database"));
+//var options = optionsBuilder.Options;
+//using (var dbContext = new ApplicationDbContext(options))
 //{
 //    dbContext.Database.Migrate();
 //}
-
-
 
 
 // Configure the HTTP request pipeline.

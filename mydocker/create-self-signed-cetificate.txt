@@ -1,0 +1,3 @@
+PS C:\Users\iracl> $Certificate=New-SelfSignedCertificate –Subject testing.com -CertStoreLocation Cert:\CurrentUser\My
+PS C:\Users\iracl> $pwd = ConvertTo-SecureString -String "MyPassword" -Force -AsPlainText
+PS C:\Users\iracl> Export-PfxCertificate -Cert $Certificate -FilePath C:\dimitris\cert\cert.pfx -Password $pwd
